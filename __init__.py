@@ -1,31 +1,54 @@
-import requests
+import time
 
+try:
+    import adafruit_requests as requests
+except ImportError:
+    import requests
+    
 class MLB_API:
 
-    def __init__(self, team, time_zone, requests=requests):
+    def __init__(self, team, time_zone, request_lib=requests):
         self.__team = team
         self.__time_zone = time_zone
         
-        self.__requests= requests
+        self.__requests = request_lib
 
         self.__mlb_api_url = "https://statsapi.mlb.com"
         self.__date_time_url = "http://worldtimeapi.org/api"
 
     def __get_date(self):
+        time.sleep(1.0)
         url = "%s/timezone/%s" % (self.__date_time_url, self.__time_zone)
         response = self.__requests.get(url)
         return response.json()["datetime"].split("T")[0]
     
     def __get_todays_schedule(self):
+        time.sleep(1.0)
         url = "%s/api/v1/schedule?date=%s&sportId=1" % (self.__mlb_api_url, self.__get_date())
         response = self.__requests.get(url)
         return response.json()
+    
+    def __get_game_info(self, link):
+        time.sleep(1.0)
+        url = "%s%s" % (self.__mlb_api_url, link)
+        response = self.__requests.get(url)
+        return response.json()
+    
+    def __get_standings(self):
+        time.sleep(1.0)
+        url = "%s/api/v1/standings?standingsTypes=regularSeason&leagueId=103,104" % self.__mlb_api_url
+        response = self.__requests.get(url)
+        return response.json()
+    
+    def __get_abbrivation(self, link):
+        time.sleep(1.0)
+        url = "%s%s" % (self.__mlb_api_url, link)
+        response = self.__requests.get(url)
+        return response.json()["teams"][0]["abbreviation"]
 
-    def get_game_info(self):
+    def get_info_on_todays_games(self):
         
-        game_info = {
-            "Link": None
-        }
+        payload = []
         
         schedule = self.__get_todays_schedule()
         for game in schedule["dates"][0]["games"]:
@@ -33,50 +56,59 @@ class MLB_API:
             home_team = game["teams"]["home"]["team"]["name"]
 
             if self.__team in away_team or self.__team in home_team:
-                game_state = game["status"]["detailedState"]
-                if game_state == "In Progress":
-                    game_info["Link"] = game["link"]
-        return game_info
-    
-    def get_standings(self, type):
-        pass
 
+                payload.append({
+                    "State": game["status"]["detailedState"],
+                    "Link": game["link"],
+                })
+
+        return payload
+    
+    def get_standings(self, filter):
+        
+        standings = self.__get_standings()
+        
+        payload = []
+        
+        if filter == "Divison":
+            for record in standings["records"]:
+                if any([self.__team in team_record["team"]['name'] for team_record in record["teamRecords"]]):
+                    for team_record in record["teamRecords"]:
+                        payload.append({
+                            "Team": self.__get_abbrivation(team_record["team"]["link"]),
+                            "Wins": team_record["records"]["overallRecords"][0]["wins"] + 
+                                    team_record["records"]["overallRecords"][1]["wins"],
+                            "Losses": team_record["records"]["overallRecords"][0]["losses"] + 
+                                      team_record["records"]["overallRecords"][1]["losses"],
+                            "Games Back": team_record["gamesBack"],
+                        })
+            return payload             
+        else:
+            print("Cannot determine stadning for type '%s'" % filter)
+        
     def get_live_score(self, link):
-        url = "%s%s" % (self.__mlb_api_url, link)
-        response = self.__requests.get(url)
-        data = response.json()
         
-        away_team = data["gameData"]["teams"]["away"]["abbreviation"]
-        home_team = data["gameData"]["teams"]["home"]["abbreviation"]
-        away_score = data["liveData"]["plays"]["currentPlay"]["result"]["awayScore"]
-        home_score = data["liveData"]["plays"]["currentPlay"]["result"]["homeScore"]
-        half_inning = data["liveData"]["plays"]["currentPlay"]["about"]["halfInning"]
-        inning = data["liveData"]["plays"]["currentPlay"]["about"]["inning"]
-        is_complete = data["liveData"]["plays"]["currentPlay"]["about"]["isComplete"]
-        first = data["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnFirst") != None
-        second = data["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnSeconds") != None
-        third = data["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnThird") != None
-        outs = data["liveData"]["plays"]["currentPlay"]["count"]["outs"]
-        balls = data["liveData"]["plays"]["currentPlay"]["count"]["balls"]
-        strikes = data["liveData"]["plays"]["currentPlay"]["count"]["strikes"]
-        
+        game_info = self.__get_game_info(link)
+
         payload = {
-            "Away Team": away_team,
-            "Home Team": home_team,
-            "Away Score": away_score,
-            "Home Score": home_score,
-            "Half Inning": half_inning,
-            "Inning": inning,
-            "Is Inning Complete": is_complete,
-            "Man On First": first,
-            "Man On Seconds": second,
-            "Man on Third": third,
-            "Outs": outs,
-            "Balls": balls,
-            "Strikes": strikes,
+            "State": game_info["gameData"]["status"]["detailedState"],
+            "Date Time": game_info["gameData"]["datetime"],
+            "Away Team": game_info["gameData"]["teams"]["away"]["abbreviation"],
+            "Home Team": game_info["gameData"]["teams"]["home"]["abbreviation"],
+            "Away Score": game_info["liveData"]["plays"]["currentPlay"]["result"]["awayScore"],
+            "Home Score": game_info["liveData"]["plays"]["currentPlay"]["result"]["homeScore"],
+            "Half Inning": game_info["liveData"]["plays"]["currentPlay"]["about"]["halfInning"],
+            "Inning": game_info["liveData"]["plays"]["currentPlay"]["about"]["inning"],
+            "Is Inning Complete": game_info["liveData"]["plays"]["currentPlay"]["about"]["isComplete"],
+            "Man On First": game_info["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnFirst") != None,
+            "Man On Seconds": game_info["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnSeconds") != None,
+            "Man on Third": game_info["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnThird") != None,
+            "Outs": game_info["liveData"]["plays"]["currentPlay"]["count"]["outs"],
+            "Balls": game_info["liveData"]["plays"]["currentPlay"]["count"]["balls"],
+            "Strikes": game_info["liveData"]["plays"]["currentPlay"]["count"]["strikes"],
         }
         
-        print(payload)
+        return payload
         
 
         
