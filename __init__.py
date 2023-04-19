@@ -16,7 +16,12 @@ class MLB_API:
         response = requests.get(url)
         return response.json()
 
-    def get_game_link(self):
+    def get_game_info(self):
+        
+        game_info = {
+            "Link": None
+        }
+        
         schedule = self.__get_todays_schedule()
         for game in schedule["dates"][0]["games"]:
             away_team = game["teams"]["away"]["team"]["name"]
@@ -25,8 +30,8 @@ class MLB_API:
             if self.__team in away_team or self.__team in home_team:
                 game_state = game["status"]["detailedState"]
                 if game_state == "In Progress":
-                    return game["link"]
-        return None
+                    game_info["Link"] = game["link"]
+        return game_info
     
     def get_standings(self, type):
         pass
