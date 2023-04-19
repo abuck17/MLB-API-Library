@@ -1,19 +1,24 @@
 import requests
-from datetime import datetime
 
 class MLB_API:
 
-    def __init__(self, team):
+    def __init__(self, team, time_zone, requests=requests):
         self.__team = team
+        self.__time_zone = time_zone
+        
+        self.__requests= requests
 
-        self.__url = "https://statsapi.mlb.com"
+        self.__mlb_api_url = "https://statsapi.mlb.com"
+        self.__date_time_url = "http://worldtimeapi.org/api"
 
     def __get_date(self):
-        return datetime.today().strftime("%Y-%m-%d")
+        url = "%s/timezone/%s" % (self.__date_time_url, self.__time_zone)
+        response = self.__requests.get(url)
+        return response.json()["datetime"].split("T")[0]
     
     def __get_todays_schedule(self):
-        url = "%s/api/v1/schedule?date=%s&sportId=1" % (self.__url, self.__get_date())
-        response = requests.get(url)
+        url = "%s/api/v1/schedule?date=%s&sportId=1" % (self.__mlb_api_url, self.__get_date())
+        response = self.__requests.get(url)
         return response.json()
 
     def get_game_info(self):
@@ -37,8 +42,8 @@ class MLB_API:
         pass
 
     def get_live_score(self, link):
-        url = "%s%s" % (self.__url, link)
-        response = requests.get(url)
+        url = "%s%s" % (self.__mlb_api_url, link)
+        response = self.__requests.get(url)
         data = response.json()
         
         away_team = data["gameData"]["teams"]["away"]["abbreviation"]

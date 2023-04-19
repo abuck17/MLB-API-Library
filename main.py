@@ -9,9 +9,11 @@ def main():
     
     config_data = parse_config_file()
 
-    mlb_api = MLB_API(team=config_data["Team"])
+    mlb_api = MLB_API(team=config_data["Team"], time_zone=config_data["Time Zone"])
 
     game_info = mlb_api.get_game_info()
+    
+    print(game_info)
 
     if game_info["Link"]:
 
