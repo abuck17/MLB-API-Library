@@ -19,9 +19,7 @@ def main():
         games_info = mlb_api.get_info_on_todays_games()
                 
         for game_info in games_info:
-            
-            display(mlb_api.get_live_score(link=game_info["Link"]))
-  
+              
             if game_info["State"] == "In Progress":
                                 
                 display(mlb_api.get_live_score(link=game_info["Link"]))
