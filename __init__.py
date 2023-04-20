@@ -5,6 +5,8 @@ try:
 except ImportError:
     import requests
     
+# TODO: Need to shrink data size of api request calls (standings and game)
+    
 class MLB_API:
 
     def __init__(self, team, time_zone, request_lib=requests):
