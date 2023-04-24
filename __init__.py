@@ -36,6 +36,8 @@ game_info_fields = [
 standings_fields = [
     "records",
     "teamRecords",
+    "league",
+    "id",
     "team",
     "name",
     "link",
@@ -121,7 +123,7 @@ class MLB_API:
         
         payload = []
         
-        if filter == "Divison":
+        if filter == "Division":
             for record in standings["records"]:
                 if any([self.__team in team_record["team"]['name'] for team_record in record["teamRecords"]]):
                     for team_record in record["teamRecords"]:
@@ -158,6 +160,4 @@ class MLB_API:
         }
         
         return payload
-        
-
         

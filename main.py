@@ -1,8 +1,14 @@
 import json
 from __init__ import MLB_API
 
+def display_sep():
+    print("-" * 80)
+
 def display(data):
-    print(data)
+    display_sep()
+    for item in data:
+        print(item)
+    display_sep()
 
 def parse_config_file():
     with open("config.json", "r") as fid:
@@ -17,16 +23,17 @@ def main():
     while True:
 
         games_info = mlb_api.get_info_on_todays_games()
+        
+        if games_info:
+            
+            in_progess = [game_info["State"] == "In Progress" for game_info in games_info]
+            
+            if any(in_progess):
                 
-        for game_info in games_info:
-              
-            if game_info["State"] == "In Progress":
-                                
-                display(mlb_api.get_live_score(link=game_info["Link"]))
-
-            else:
-
-                display(mlb_api.get_standings(filter="Divison"))
+                display(mlb_api.get_live_score(link=games_info[in_progess.index(True)]))
+                continue
+            
+        display(mlb_api.get_standings(filter="Division"))
     
 if __name__ == "__main__":
     main()
