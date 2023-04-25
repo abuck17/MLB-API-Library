@@ -36,8 +36,6 @@ game_info_fields = [
 standings_fields = [
     "records",
     "teamRecords",
-    "league",
-    "id",
     "team",
     "name",
     "link",
@@ -121,13 +119,16 @@ class MLB_API:
         
         standings = self.__get_standings()
         
-        payload = []
+        payload = {
+            "Type": filter + " Standings",
+            "Data": []
+            }
         
         if filter == "Division":
             for record in standings["records"]:
                 if any([self.__team in team_record["team"]['name'] for team_record in record["teamRecords"]]):
                     for team_record in record["teamRecords"]:
-                        payload.append({
+                        payload["Data"].append({
                             "Team": self.__get_abbrivation(team_record["team"]["link"]),
                             "Wins": team_record["wins"],
                             "Losses": team_record["losses"],
@@ -142,6 +143,7 @@ class MLB_API:
         game_info = self.__get_game_info(link)
 
         payload = {
+            "Type": "Live Score",
             "State": game_info["gameData"]["status"]["detailedState"],
             "Date Time": game_info["gameData"]["datetime"]["dateTime"],
             "Away Team": game_info["gameData"]["teams"]["away"]["abbreviation"],
