@@ -1,4 +1,5 @@
 import json
+from pprint import pprint
 from __init__ import MLB_API
 
 def display_sep():
@@ -6,8 +7,7 @@ def display_sep():
 
 def display(data):
     display_sep()
-    for item in data:
-        print(item)
+    pprint(data)
     display_sep()
 
 def parse_config_file():
@@ -30,7 +30,7 @@ def main():
             
             if any(in_progess):
                 
-                display(mlb_api.get_live_score(link=games_info[in_progess.index(True)]))
+                display(mlb_api.get_live_score(link=games_info[in_progess.index(True)]["Link"]))
                 continue
             
         display(mlb_api.get_standings(filter="Division"))
