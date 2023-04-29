@@ -155,7 +155,7 @@ class MLB_API:
             "Is Inning Complete": game_info["liveData"]["plays"]["currentPlay"]["about"]["isComplete"],
             "Man On First": game_info["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnFirst") != None,
             "Man On Second": game_info["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnSecond") != None,
-            "Man on Third": game_info["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnThird") != None,
+            "Man On Third": game_info["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnThird") != None,
             "Outs": game_info["liveData"]["plays"]["currentPlay"]["count"]["outs"],
             "Balls": game_info["liveData"]["plays"]["currentPlay"]["count"]["balls"],
             "Strikes": game_info["liveData"]["plays"]["currentPlay"]["count"]["strikes"],
