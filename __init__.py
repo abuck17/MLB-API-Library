@@ -5,7 +5,7 @@ try:
 except ImportError:
     import requests
     
-game_info_fields = [
+live_game_info_fields = [
     "gameData",
     "datetime",
     "dateTime",
@@ -17,11 +17,15 @@ game_info_fields = [
     "plays",
     "currentPlay",
     "result",
+    "description",
     "awayScore",
     "homeScore",
     "about",
     "halfInning",
     "inning",
+    "pitcher",
+    "batter",
+    "fullName",
     "isComplete",
     "matchup",
     "postOnFirst",
@@ -33,6 +37,17 @@ game_info_fields = [
     "strikes",
 ]
 
+scheduled_game_info_fields = [
+    "gameData",
+    "datetime",
+    "dateTime",
+    "probablePitchers",
+    "away",
+    "home",
+    "fullName",
+    "link",
+]
+
 standings_fields = [
     "records",
     "teamRecords",
@@ -42,7 +57,6 @@ standings_fields = [
     "wins",
     "losses",
     "gamesBack",
-    "wildCardGamesBack",
 ]
     
 class MLB_API:
@@ -55,26 +69,46 @@ class MLB_API:
 
         self.__mlb_api_url = "https://statsapi.mlb.com"
         self.__date_time_url = "http://worldtimeapi.org/api"
-
-    def __get_date(self):
+        
+        self.__date_time = None
+        self.update_date_time()
+        
+    def update_date_time(self):
         time.sleep(1.0)
         url = "%s/timezone/%s" % (self.__date_time_url, self.__time_zone)
         response = self.__requests.get(url)
-        data = response.json()["datetime"].split("T")[0]
+        self.__date_time = response.json()["datetime"]
         response.close()
-        return data
+
+    def get_date(self):
+        return self.__date_time.split("T")[0]
+    
+    def get_time(self):
+        return self.__date_time.split("T")[1][:-6]
+    
+    def get_timezone_offset(self):
+        return int(self.__date_time[-6:-3])
     
     def __get_todays_schedule(self):
+        self.update_date_time()
         time.sleep(1.0)
-        url = "%s/api/v1/schedule?date=%s&sportId=1" % (self.__mlb_api_url, self.__get_date())
+        url = "%s/api/v1/schedule?date=%s&sportId=1" % (self.__mlb_api_url, self.get_date())
         response = self.__requests.get(url)
         data = response.json()
         response.close()
         return data
     
-    def __get_game_info(self, link):
+    def __get_live_game_info(self, link):
         time.sleep(1.0)
-        url = "%s%s?fields=%s" % (self.__mlb_api_url, link, ",".join(game_info_fields))
+        url = "%s%s?fields=%s" % (self.__mlb_api_url, link, ",".join(live_game_info_fields))
+        response = self.__requests.get(url)
+        data = response.json()
+        response.close()
+        return data
+    
+    def __get_scheduled_game_info(self, link):
+        time.sleep(1.0)
+        url = "%s%s?fields=%s" % (self.__mlb_api_url, link, ",".join(scheduled_game_info_fields))
         response = self.__requests.get(url)
         data = response.json()
         response.close()
@@ -115,32 +149,29 @@ class MLB_API:
 
         return payload
     
-    def get_standings(self, filter):
+    def get_standings(self):
         
         standings = self.__get_standings()
         
         payload = {
-            "Type": filter + " Standings",
+            "Type": "Division Standings",
             "Data": []
             }
         
-        if filter == "Division":
-            for record in standings["records"]:
-                if any([self.__team in team_record["team"]['name'] for team_record in record["teamRecords"]]):
-                    for team_record in record["teamRecords"]:
-                        payload["Data"].append({
-                            "Team": self.__get_abbrivation(team_record["team"]["link"]),
-                            "Wins": team_record["wins"],
-                            "Losses": team_record["losses"],
-                            "Games Back": team_record["gamesBack"],
-                        })
-            return payload             
-        else:
-            print("Cannot determine stadning for type '%s'" % filter)
+        for record in standings["records"]:
+            if any([self.__team in team_record["team"]['name'] for team_record in record["teamRecords"]]):
+                for team_record in record["teamRecords"]:
+                    payload["Data"].append({
+                        "Team": self.__get_abbrivation(team_record["team"]["link"]),
+                        "Wins": team_record["wins"],
+                        "Losses": team_record["losses"],
+                        "Games Back": team_record["gamesBack"],
+                    })
+        return payload             
         
     def get_live_score(self, link):
         
-        game_info = self.__get_game_info(link)
+        game_info = self.__get_live_game_info(link)
 
         payload = {
             "Type": "Live Score",
@@ -148,11 +179,14 @@ class MLB_API:
             "Date Time": game_info["gameData"]["datetime"]["dateTime"],
             "Away Team": game_info["gameData"]["teams"]["away"]["abbreviation"],
             "Home Team": game_info["gameData"]["teams"]["home"]["abbreviation"],
+            "Description": game_info["liveData"]["plays"]["currentPlay"]["result"].get("description"),
             "Away Score": game_info["liveData"]["plays"]["currentPlay"]["result"]["awayScore"],
             "Home Score": game_info["liveData"]["plays"]["currentPlay"]["result"]["homeScore"],
             "Half Inning": game_info["liveData"]["plays"]["currentPlay"]["about"]["halfInning"],
             "Inning": game_info["liveData"]["plays"]["currentPlay"]["about"]["inning"],
             "Is Inning Complete": game_info["liveData"]["plays"]["currentPlay"]["about"]["isComplete"],
+            "Pitcher": game_info["liveData"]["plays"]["currentPlay"]["matchup"]["pitcher"]["fullName"],
+            "Batter": game_info["liveData"]["plays"]["currentPlay"]["matchup"]["batter"]["fullName"],
             "Man On First": game_info["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnFirst") != None,
             "Man On Second": game_info["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnSecond") != None,
             "Man On Third": game_info["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnThird") != None,
@@ -162,4 +196,14 @@ class MLB_API:
         }
         
         return payload
+    
+    def get_scheduled_game_info(self, link):
         
+        game_info = self.__get_scheduled_game_info(link)
+
+        payload = {
+            "Type": "Scheduled",
+            "Date Time": game_info["gameData"]["datetime"]["dateTime"],
+        }
+        
+        return payload
