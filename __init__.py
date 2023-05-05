@@ -17,7 +17,6 @@ live_game_info_fields = [
     "plays",
     "currentPlay",
     "result",
-    "description",
     "awayScore",
     "homeScore",
     "about",
@@ -25,7 +24,7 @@ live_game_info_fields = [
     "inning",
     "pitcher",
     "batter",
-    "fullName",
+    "link",
     "isComplete",
     "matchup",
     "postOnFirst",
@@ -44,8 +43,9 @@ scheduled_game_info_fields = [
     "probablePitchers",
     "away",
     "home",
-    "fullName",
     "link",
+    "teams",
+    "abbreviation",
 ]
 
 standings_fields = [
@@ -57,6 +57,16 @@ standings_fields = [
     "wins",
     "losses",
     "gamesBack",
+]
+
+team_fields = [
+    "teams",
+    "abbreviation",
+]
+
+people_fields = [
+    "people",
+    "lastName",
 ]
     
 class MLB_API:
@@ -114,10 +124,21 @@ class MLB_API:
         response.close()
         return data
     
-    def __get_standings(self):
+    def __get_standings(self, league):
+        
+        if league in ["AL", "American League"]:
+            league_id = "103"
+        elif league in ["NL", "National League"]:
+            league_id = "104"
+        elif league == "All":
+            league_id = "103,104"
+        else:
+            print("Cannt determine league of type '%s'" % league)
+        
         time.sleep(1.0)
-        url = "%s/api/v1/standings?standingsTypes=regularSeason&leagueId=103,104&fields=%s" % (
-            self.__mlb_api_url, ",".join(standings_fields))
+        url = "%s/api/v1/standings?standingsTypes=regularSeason&leagueId=%s&fields=%s" % (
+            self.__mlb_api_url, league_id, ",".join(standings_fields))
+        print(url)
         response = self.__requests.get(url)
         data = response.json()
         response.close()
@@ -125,9 +146,17 @@ class MLB_API:
     
     def __get_abbrivation(self, link):
         time.sleep(1.0)
-        url = "%s%s" % (self.__mlb_api_url, link)
+        url = "%s%s?fields=%s" % (self.__mlb_api_url, link, ",".join(team_fields))
         response = self.__requests.get(url)
         data = response.json()["teams"][0]["abbreviation"]
+        response.close()
+        return data
+    
+    def __get_last_name(self, link):
+        time.sleep(1.0)
+        url = "%s%s?fields=%s" % (self.__mlb_api_url, link, ",".join(people_fields))
+        response = self.__requests.get(url)
+        data = response.json()["people"][0]["lastName"]
         response.close()
         return data
 
@@ -151,22 +180,27 @@ class MLB_API:
     
     def get_standings(self):
         
-        standings = self.__get_standings()
+        # TODO: Need to do this better. Running into memory issues.
         
-        payload = {
-            "Type": "Division Standings",
-            "Data": []
-            }
-        
-        for record in standings["records"]:
-            if any([self.__team in team_record["team"]['name'] for team_record in record["teamRecords"]]):
-                for team_record in record["teamRecords"]:
-                    payload["Data"].append({
-                        "Team": self.__get_abbrivation(team_record["team"]["link"]),
-                        "Wins": team_record["wins"],
-                        "Losses": team_record["losses"],
-                        "Games Back": team_record["gamesBack"],
-                    })
+        for league in ["AL", "NL"]:
+            
+            standings = self.__get_standings(league)
+            
+            payload = {
+                "Type": "Division Standings",
+                "Data": []
+                }
+            
+            for record in standings["records"]:
+                if any([self.__team in team_record["team"]['name'] for team_record in record["teamRecords"]]):
+                    for team_record in record["teamRecords"]:
+                        payload["Data"].append({
+                            "Team": self.__get_abbrivation(team_record["team"]["link"]),
+                            "Wins": team_record["wins"],
+                            "Losses": team_record["losses"],
+                            "Games Back": team_record["gamesBack"],
+                        })
+                        
         return payload             
         
     def get_live_score(self, link):
@@ -179,14 +213,13 @@ class MLB_API:
             "Date Time": game_info["gameData"]["datetime"]["dateTime"],
             "Away Team": game_info["gameData"]["teams"]["away"]["abbreviation"],
             "Home Team": game_info["gameData"]["teams"]["home"]["abbreviation"],
-            "Description": game_info["liveData"]["plays"]["currentPlay"]["result"].get("description"),
             "Away Score": game_info["liveData"]["plays"]["currentPlay"]["result"]["awayScore"],
             "Home Score": game_info["liveData"]["plays"]["currentPlay"]["result"]["homeScore"],
             "Half Inning": game_info["liveData"]["plays"]["currentPlay"]["about"]["halfInning"],
             "Inning": game_info["liveData"]["plays"]["currentPlay"]["about"]["inning"],
             "Is Inning Complete": game_info["liveData"]["plays"]["currentPlay"]["about"]["isComplete"],
-            "Pitcher": game_info["liveData"]["plays"]["currentPlay"]["matchup"]["pitcher"]["fullName"],
-            "Batter": game_info["liveData"]["plays"]["currentPlay"]["matchup"]["batter"]["fullName"],
+            "Pitcher": self.__get_last_name(game_info["liveData"]["plays"]["currentPlay"]["matchup"]["pitcher"]["link"]),
+            "Batter": self.__get_last_name(game_info["liveData"]["plays"]["currentPlay"]["matchup"]["batter"]["link"]),
             "Man On First": game_info["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnFirst") != None,
             "Man On Second": game_info["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnSecond") != None,
             "Man On Third": game_info["liveData"]["plays"]["currentPlay"]["matchup"].get("postOnThird") != None,
@@ -204,6 +237,12 @@ class MLB_API:
         payload = {
             "Type": "Scheduled",
             "Date Time": game_info["gameData"]["datetime"]["dateTime"],
+            "Away Team": game_info["gameData"]["teams"]["away"]["abbreviation"],
+            "Home Team": game_info["gameData"]["teams"]["home"]["abbreviation"],
+            "Away Score": 0,
+            "Home Score": 0,
+            "Away Pitcher": self.__get_last_name(game_info["gameData"]["probablePitchers"]["away"]["link"]),
+            "Home Pitcher": self.__get_last_name(game_info["gameData"]["probablePitchers"]["home"]["link"]),
         }
         
         return payload
