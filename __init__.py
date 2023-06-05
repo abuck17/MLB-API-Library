@@ -230,6 +230,14 @@ class MLB_API:
         
         return payload
     
+    def get_final_score(self, link):
+        
+        payload = self.get_live_score(link)
+        
+        payload["Type"] = "Final Score"
+        
+        return payload
+    
     def get_scheduled_game_info(self, link):
         
         game_info = self.__get_scheduled_game_info(link)
