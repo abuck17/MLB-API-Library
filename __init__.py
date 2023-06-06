@@ -36,6 +36,26 @@ live_game_info_fields = [
     "strikes",
 ]
 
+final_game_info_fields = [
+    "metaData",
+    "timeStamp",
+    "gameData",
+    "status",
+    "detailedState",
+    "teams",
+    "abbreviation",
+    "liveData",
+    "plays",
+    "currentPlay",
+    "result",
+    "awayScore",
+    "homeScore",
+    "decisions",
+    "winner",
+    "loser",
+    "link",
+]
+
 scheduled_game_info_fields = [
     "gameData",
     "datetime",
@@ -116,6 +136,14 @@ class MLB_API:
         response.close()
         return data
     
+    def __get_final_game_info(self, link):
+        time.sleep(1.0)
+        url = "%s%s?fields=%s" % (self.__mlb_api_url, link, ",".join(final_game_info_fields))
+        response = self.__requests.get(url)
+        data = response.json()
+        response.close()
+        return data
+    
     def __get_scheduled_game_info(self, link):
         time.sleep(1.0)
         url = "%s%s?fields=%s" % (self.__mlb_api_url, link, ",".join(scheduled_game_info_fields))
@@ -138,7 +166,6 @@ class MLB_API:
         time.sleep(1.0)
         url = "%s/api/v1/standings?standingsTypes=regularSeason&leagueId=%s&fields=%s" % (
             self.__mlb_api_url, league_id, ",".join(standings_fields))
-        print(url)
         response = self.__requests.get(url)
         data = response.json()
         response.close()
@@ -232,9 +259,19 @@ class MLB_API:
     
     def get_final_score(self, link):
         
-        payload = self.get_live_score(link)
-        
-        payload["Type"] = "Final Score"
+        final_info = self.__get_final_game_info(link)
+                
+        payload = {
+            "Type": "Final Score",
+            "State": final_info["gameData"]["status"]["detailedState"],
+            "Time Stamp": final_info["metaData"]["timeStamp"],
+            "Away Team": final_info["gameData"]["teams"]["away"]["abbreviation"],
+            "Home Team": final_info["gameData"]["teams"]["home"]["abbreviation"],
+            "Away Score": final_info["liveData"]["plays"]["currentPlay"]["result"]["awayScore"],
+            "Home Score": final_info["liveData"]["plays"]["currentPlay"]["result"]["homeScore"],
+            "Winner": self.__get_last_name(final_info["liveData"]["decisions"]["winner"]["link"]),
+            "Loser": self.__get_last_name(final_info["liveData"]["decisions"]["loser"]["link"]),
+        }
         
         return payload
     
