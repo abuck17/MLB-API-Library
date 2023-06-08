@@ -68,6 +68,26 @@ scheduled_game_info_fields = [
     "abbreviation",
 ]
 
+delayed_game_info_fields = [
+    "gameData",
+    "datetime",
+    "dateTime",
+    "status",
+    "detailedState",
+    "teams",
+    "abbreviation",
+    "probablePitchers",
+    "away",
+    "home",
+    "link",
+    "liveData",
+    "plays",
+    "currentPlay",
+    "result",
+    "awayScore",
+    "homeScore",
+]
+
 standings_fields = [
     "records",
     "teamRecords",
@@ -131,6 +151,14 @@ class MLB_API:
     def __get_live_game_info(self, link):
         time.sleep(1.0)
         url = "%s%s?fields=%s" % (self.__mlb_api_url, link, ",".join(live_game_info_fields))
+        response = self.__requests.get(url)
+        data = response.json()
+        response.close()
+        return data
+    
+    def __get_delayed_game_info(self, link):
+        time.sleep(1.0)
+        url = "%s%s?fields=%s" % (self.__mlb_api_url, link, ",".join(delayed_game_info_fields))
         response = self.__requests.get(url)
         data = response.json()
         response.close()
@@ -291,3 +319,28 @@ class MLB_API:
         }
         
         return payload
+    
+    def get_delayed_game_info(self, link):
+        
+        game_info = self.__get_delayed_game_info(link)
+        
+        away_score = 0
+        home_score = 0
+        if game_info["liveData"]["plays"]:
+            away_score = game_info["liveData"]["plays"]["currentPlay"]["result"]["awayScore"]
+            home_score = game_info["liveData"]["plays"]["currentPlay"]["result"]["homeScore"]
+
+        payload = {
+            "Type": "Delayed",
+            "State": game_info["gameData"]["status"]["detailedState"],
+            "Date Time": game_info["gameData"]["datetime"]["dateTime"],
+            "Away Team": game_info["gameData"]["teams"]["away"]["abbreviation"],
+            "Home Team": game_info["gameData"]["teams"]["home"]["abbreviation"],
+            "Away Score": away_score,
+            "Home Score": home_score,
+            "Away Pitcher": self.__get_last_name(game_info["gameData"]["probablePitchers"]["away"]["link"]), # TODO: When game started
+            "Home Pitcher": self.__get_last_name(game_info["gameData"]["probablePitchers"]["home"]["link"]), # TODO: When game started
+        }
+        
+        return payload
+    
