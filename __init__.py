@@ -129,6 +129,7 @@ class MLB_API:
         response = self.__requests.get(url)
         self.__date_time = response.json()["datetime"]
         response.close()
+        del response
 
     def get_date(self):
         return self.__date_time.split("T")[0]
@@ -146,6 +147,7 @@ class MLB_API:
         response = self.__requests.get(url)
         data = response.json()
         response.close()
+        del response
         return data
     
     def __get_live_game_info(self, link):
@@ -154,6 +156,7 @@ class MLB_API:
         response = self.__requests.get(url)
         data = response.json()
         response.close()
+        del response
         return data
     
     def __get_delayed_game_info(self, link):
@@ -162,6 +165,7 @@ class MLB_API:
         response = self.__requests.get(url)
         data = response.json()
         response.close()
+        del response
         return data
     
     def __get_final_game_info(self, link):
@@ -170,6 +174,7 @@ class MLB_API:
         response = self.__requests.get(url)
         data = response.json()
         response.close()
+        del response
         return data
     
     def __get_scheduled_game_info(self, link):
@@ -178,6 +183,7 @@ class MLB_API:
         response = self.__requests.get(url)
         data = response.json()
         response.close()
+        del response
         return data
     
     def __get_standings(self, league):
@@ -197,6 +203,7 @@ class MLB_API:
         response = self.__requests.get(url)
         data = response.json()
         response.close()
+        del response
         return data
     
     def __get_abbrivation(self, link):
@@ -205,6 +212,7 @@ class MLB_API:
         response = self.__requests.get(url)
         data = response.json()["teams"][0]["abbreviation"]
         response.close()
+        del response
         return data
     
     def __get_last_name(self, link):
@@ -213,6 +221,7 @@ class MLB_API:
         response = self.__requests.get(url)
         data = response.json()["people"][0]["lastName"]
         response.close()
+        del response
         return data
 
     def get_info_on_todays_games(self):
@@ -220,6 +229,7 @@ class MLB_API:
         payload = []
         
         schedule = self.__get_todays_schedule()
+        
         for game in schedule["dates"][0]["games"]:
             away_team = game["teams"]["away"]["team"]["name"]
             home_team = game["teams"]["home"]["team"]["name"]
@@ -230,6 +240,8 @@ class MLB_API:
                     "State": game["status"]["detailedState"],
                     "Link": game["link"],
                 })
+                
+        del schedule
 
         return payload
     
@@ -255,6 +267,8 @@ class MLB_API:
                             "Losses": team_record["losses"],
                             "Games Back": team_record["gamesBack"],
                         })
+                        
+            del standings
                         
         return payload             
         
@@ -283,6 +297,8 @@ class MLB_API:
             "Strikes": game_info["liveData"]["plays"]["currentPlay"]["count"]["strikes"],
         }
         
+        del game_info
+        
         return payload
     
     def get_final_score(self, link):
@@ -301,6 +317,8 @@ class MLB_API:
             "Loser": self.__get_last_name(final_info["liveData"]["decisions"]["loser"]["link"]),
         }
         
+        del final_info
+        
         return payload
     
     def get_scheduled_game_info(self, link):
@@ -317,6 +335,8 @@ class MLB_API:
             "Away Pitcher": self.__get_last_name(game_info["gameData"]["probablePitchers"]["away"]["link"]),
             "Home Pitcher": self.__get_last_name(game_info["gameData"]["probablePitchers"]["home"]["link"]),
         }
+        
+        del game_info
         
         return payload
     
@@ -341,6 +361,8 @@ class MLB_API:
             "Away Pitcher": self.__get_last_name(game_info["gameData"]["probablePitchers"]["away"]["link"]), # TODO: When game started
             "Home Pitcher": self.__get_last_name(game_info["gameData"]["probablePitchers"]["home"]["link"]), # TODO: When game started
         }
+        
+        del game_info
         
         return payload
     
