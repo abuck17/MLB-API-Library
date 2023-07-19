@@ -325,6 +325,8 @@ class MLB_API:
         
         game_info = self.__get_scheduled_game_info(link)
 
+	# TODO: Make Away and Home Pitcher Blank if no data comes back
+
         payload = {
             "Type": "Scheduled",
             "Date Time": game_info["gameData"]["datetime"]["dateTime"],
